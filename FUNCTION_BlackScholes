@@ -7,10 +7,12 @@ Create FUNCTION [dbo].[BlackScholes] (
 	,@ra FLOAT
 	,@vo FLOAT
 	)
+
+
 	-------------------------------------------------------------------------------------------------------------
 	-- how to run
 	-- Arguments - what are you trying to calculate ? Pass this parameter as the 'CallPutFlag'
-	-- CP  call theo val		-- PP	put theo val
+	-- CP  call theo val			-- PP	put theo val
 	-- CD  call delta			-- PD	put delta
 	-- GG  COMMON gamma			-- GG	
 	-- CT  call theta			-- PT	put theta
@@ -18,15 +20,17 @@ Create FUNCTION [dbo].[BlackScholes] (
 	-- CR  call rho				-- PR	put rho
 	-- S = Stock price			pass int values	e.g. pass 100 for Stock
 	-- X = Strike price			pass int values e.g. pass 150 for Strike
-	-- T_dt = Todays Date		pass date value 'yyyy-mm-dd'
-	-- T_dtex = Expiry Date		pass date value 'yyyy-mm-dd'
-	-- ra = interest rate		pass int values e.g. pass 5 for 5% interest rate
-	-- vo = Volatility IV		pass int values e.g. pass 30 for 30% volitility
+	-- T_dt = Todays Date			pass date value 'yyyy-mm-dd'
+	-- T_dtex = Expiry Date			pass date value 'yyyy-mm-dd'
+	-- ra = interest rate			pass int values e.g. pass 5 for 5% interest rate
+	-- vo = Volatility IV			pass int values e.g. pass 30 for 30% volitility
 	-- select	Round([dbo].[BlackScholes]('CP', 305, 305, '2023-10-31','2024-10-31', 5, 30),3)				=	43.405
 	-- select	Round([dbo].[BlackScholes]('CP', 10, 15, '2023-10-31','2024-11-20', 5, 20),3)				=	  .043
 	-- use this site to validate results
 	-- https://www.mystockoptions.com/black-scholes.cfm?ticker=&s=305&x=305&t=1&r=5%25&v=30&calculate=Calculate
 	-------------------------------------------------------------------------------------------------------------
+
+
 RETURNS FLOAT
 AS
 BEGIN
@@ -67,17 +71,17 @@ BEGIN
 
 	SET @ND2 = dbo.CND(@d2)
 
-	-- CALL THEORITICAL PRICE
+-- CALL THEORITICAL PRICE
 	IF @CallPutFlag = 'CP'
 	BEGIN
 		SET @BS = @S * dbo.CND(@d1) - @X * Exp(- @r * @T) * dbo.CND(@d2)
 	END
-			-- PUT THEORITICAL PRICE
+-- PUT THEORITICAL PRICE
 	ELSE IF @CallPutFlag = 'PP'
 	BEGIN
 		SET @BS = @X * Exp(- @r * @T) * dbo.CND(- @d2) - @S * dbo.CND(- @d1)
 	END
-			-- CALL DELTA
+-- CALL DELTA
 	ELSE IF @CallPutFlag = 'CD'
 	BEGIN
 		SET @BS = dbo.CND(@d1)
@@ -86,34 +90,34 @@ BEGIN
 	BEGIN
 		SET @BS = dbo.CND(@d1) - 1
 	END
-			-- CALL THETA
+-- CALL THETA
 	ELSE IF @CallPutFlag = 'CT'
 	BEGIN
 		SET @CT = - (@S * @V * @ND1) / (2 * (SqrT(@T))) - (@R * @X) * (Exp((- @R) * (@T)) * @ND2)
 		SET @BS = @CT / @days_in_year
 	END
-			-- PUT THETA
+-- PUT THETA
 	ELSE IF @CallPutFlag = 'PT'
 	BEGIN
 		SET @PT = - (@S * @V * @ND1) / (2 * SqrT(@T)) + @R * @X * Exp(- @R * (@T)) * (1 - @ND2)
 		SET @BS = @PT / @days_in_year
 	END
-			-- GG = GAMMA = COMMON
+-- GG = GAMMA = COMMON
 	ELSE IF @CallPutFlag = 'GG'
 	BEGIN
 		SET @BS = @ND1 / (@S * (@V * SqrT(@T)))
 	END
-			-- VV = VEGA COMMON
+-- VV = VEGA COMMON
 	ELSE IF @CallPutFlag = 'VV'
 	BEGIN
 		SET @BS = 0.01 * @S * SqrT(@T) * @ND1
 	END
-			-- CALL RHO
+-- CALL RHO
 	ELSE IF @CallPutFlag = 'CR'
 	BEGIN
 		SET @BS = 0.01 * @X * @T * Exp(- @R * @T) * dbo.CND(@D2)
 	END
-			-- PUT RHO
+-- PUT RHO
 	ELSE IF @CallPutFlag = 'PR'
 	BEGIN
 		SET @BS = - 0.01 * @X * @T * Exp(- @R * @T) * (1 - dbo.CND(@D2))
