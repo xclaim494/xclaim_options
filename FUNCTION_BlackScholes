@@ -1,13 +1,3 @@
-USE [options]
-GO
-
-/****** Object:  UserDefinedFunction [dbo].[BlackScholes]    Script Date: 10/31/2023 6:43:46 PM ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
 Create FUNCTION [dbo].[BlackScholes] (
 	@CallPutFlag VARCHAR(2)
 	,@S FLOAT
