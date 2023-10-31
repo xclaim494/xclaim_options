@@ -1,0 +1,133 @@
+USE [options]
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[BlackScholes]    Script Date: 10/31/2023 6:43:46 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+Create FUNCTION [dbo].[BlackScholes] (
+	@CallPutFlag VARCHAR(2)
+	,@S FLOAT
+	,@X FLOAT
+	,@T_dt DATE
+	,@T_dtex DATE
+	,@ra FLOAT
+	,@vo FLOAT
+	)
+	-------------------------------------------------------------------------------------------------------------
+	-- how to run
+	-- Arguments - what are you trying to calculate ? Pass this parameter as the 'CallPutFlag'
+	-- CP  call theo val		-- PP	put theo val
+	-- CD  call delta			-- PD	put delta
+	-- GG  COMMON gamma			-- GG	
+	-- CT  call theta			-- PT	put theta
+	-- VV  COMMON vega			-- VV
+	-- CR  call rho				-- PR	put rho
+	-- S = Stock price			pass int values	e.g. pass 100 for Stock
+	-- X = Strike price			pass int values e.g. pass 150 for Strike
+	-- T_dt = Todays Date		pass date value 'yyyy-mm-dd'
+	-- T_dtex = Expiry Date		pass date value 'yyyy-mm-dd'
+	-- ra = interest rate		pass int values e.g. pass 5 for 5% interest rate
+	-- vo = Volatility IV		pass int values e.g. pass 30 for 30% volitility
+	-- select	Round([dbo].[BlackScholes]('CP', 305, 305, '2023-10-31','2024-10-31', 5, 30),3)				=	43.405
+	-- select	Round([dbo].[BlackScholes]('CP', 10, 15, '2023-10-31','2024-11-20', 5, 20),3)				=	  .043
+	-- use this site to validate results
+	-- https://www.mystockoptions.com/black-scholes.cfm?ticker=&s=305&x=305&t=1&r=5%25&v=30&calculate=Calculate
+	-------------------------------------------------------------------------------------------------------------
+RETURNS FLOAT
+AS
+BEGIN
+	SET @t_dtex = dateadd(dd, - 1, @t_dtex)
+
+	DECLARE @days_in_year FLOAT
+
+	SET @days_in_year = 365
+
+	DECLARE @BS FLOAT
+	DECLARE @t FLOAT
+
+	SET @t = cast((datediff(day, @t_dt, @t_dtex)) AS FLOAT) / cast(@days_in_year AS FLOAT)
+
+	DECLARE @v FLOAT
+
+	SET @v = @vo / 100
+
+	DECLARE @r FLOAT
+
+	SET @r = @ra / 100
+
+	DECLARE @Ct FLOAT
+	DECLARE @Pt FLOAT
+	DECLARE @d1 FLOAT
+
+	SET @d1 = (Log(@S / @X) + (@r + power(@v, 2) / 2) * @T) / (@v * Sqrt(@T))
+
+	DECLARE @d2 FLOAT
+
+	SET @d2 = @d1 - @v * Sqrt(@T)
+
+	DECLARE @ND1 FLOAT
+
+	SET @ND1 = Exp(- (@D1 * @D1) / 2) / (SqrT(2 * 3.14159265358979))
+
+	DECLARE @ND2 FLOAT
+
+	SET @ND2 = dbo.CND(@d2)
+
+	-- CALL THEORITICAL PRICE
+	IF @CallPutFlag = 'CP'
+	BEGIN
+		SET @BS = @S * dbo.CND(@d1) - @X * Exp(- @r * @T) * dbo.CND(@d2)
+	END
+			-- PUT THEORITICAL PRICE
+	ELSE IF @CallPutFlag = 'PP'
+	BEGIN
+		SET @BS = @X * Exp(- @r * @T) * dbo.CND(- @d2) - @S * dbo.CND(- @d1)
+	END
+			-- CALL DELTA
+	ELSE IF @CallPutFlag = 'CD'
+	BEGIN
+		SET @BS = dbo.CND(@d1)
+	END
+	ELSE IF @CallPutFlag = 'PD'
+	BEGIN
+		SET @BS = dbo.CND(@d1) - 1
+	END
+			-- CALL THETA
+	ELSE IF @CallPutFlag = 'CT'
+	BEGIN
+		SET @CT = - (@S * @V * @ND1) / (2 * (SqrT(@T))) - (@R * @X) * (Exp((- @R) * (@T)) * @ND2)
+		SET @BS = @CT / @days_in_year
+	END
+			-- PUT THETA
+	ELSE IF @CallPutFlag = 'PT'
+	BEGIN
+		SET @PT = - (@S * @V * @ND1) / (2 * SqrT(@T)) + @R * @X * Exp(- @R * (@T)) * (1 - @ND2)
+		SET @BS = @PT / @days_in_year
+	END
+			-- GG = GAMMA = COMMON
+	ELSE IF @CallPutFlag = 'GG'
+	BEGIN
+		SET @BS = @ND1 / (@S * (@V * SqrT(@T)))
+	END
+			-- VV = VEGA COMMON
+	ELSE IF @CallPutFlag = 'VV'
+	BEGIN
+		SET @BS = 0.01 * @S * SqrT(@T) * @ND1
+	END
+			-- CALL RHO
+	ELSE IF @CallPutFlag = 'CR'
+	BEGIN
+		SET @BS = 0.01 * @X * @T * Exp(- @R * @T) * dbo.CND(@D2)
+	END
+			-- PUT RHO
+	ELSE IF @CallPutFlag = 'PR'
+	BEGIN
+		SET @BS = - 0.01 * @X * @T * Exp(- @R * @T) * (1 - dbo.CND(@D2))
+	END
+
+	RETURN @BS
+END
